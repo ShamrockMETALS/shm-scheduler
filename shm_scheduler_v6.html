@@ -598,7 +598,7 @@ function buildThead(wk){
   tr1.appendChild(mTh('LEAD TIME','th-info c-lt'+(adminOn?'':' col-hidden')));
   tr1.appendChild(mTh('PROD. RELEASE','th-info c-pr'));
   tr1.appendChild(mTh('PRI.','th-info c-prio'));
-  tr1.appendChild(mTh('JOB','th-info c-job'));
+  tr1.appendChild(mTh('JOB #','th-info c-job'));
   tr1.appendChild(mTh('WO #','th-info c-wo'));
   tr1.appendChild(mTh('ON SITE','th-info c-os'+(adminOn?'':' col-hidden')));
   DEPTS.forEach(d=>tr1.appendChild(mTh(d.label.toUpperCase(),'c-dp')));
@@ -640,7 +640,7 @@ function buildRow(row,wkNum){
   tr.appendChild(iCell('lt',  'number','Days','',      true));
   tr.appendChild(iCell('pr',  'date',  '',   '',       false));
   tr.appendChild(iCell('prio','text',  '#',  'ci-pri', false));
-  tr.appendChild(iCell('job', 'text',  'Job name','ci-job',false));
+  tr.appendChild(iCell('job', 'text',  'Job #','ci-job',false));
   tr.appendChild(iCell('wo',  'text',  'WO #','ci-wo', false));
   tr.appendChild(iCell('os',  'date',  '',   '',       true));
 
@@ -791,7 +791,7 @@ function exportExcel(){
     ?(weeks.length>0?weeks:[{num:config.week||8}])
     :[{num:config.week||8}];
 
-  const hdr=['WEEK','LEAD TIME','PROD. RELEASE','PRIORITY','JOB','WO #','ON SITE DATE',
+  const hdr=['WEEK','LEAD TIME','PROD. RELEASE','PRIORITY','JOB #','WO #','ON SITE DATE',
     ...DEPTS.map(d=>d.label),'TTL',...DOLLAR_DEPTS.map(d=>d.label)];
   const data=[hdr];
 
@@ -885,7 +885,7 @@ function renderAddTab(){
 
   document.getElementById('tab-c').innerHTML=`
     <div class="fg">
-      <div class="fr"><label>Job Name</label><input type="text" id="nj-job" placeholder="e.g. Wynn Tower Suite"></div>
+      <div class="fr"><label>Job #</label><input type="text" id="nj-job" placeholder="e.g. 24-0412"></div>
       <div class="fr"><label>WO #</label><input type="text" id="nj-wo" placeholder="e.g. 46215"></div>
       <div class="fr"><label>Lead Time (days)</label><input type="number" id="nj-lt" placeholder="0"></div>
       <div class="fr"><label>Priority</label><input type="text" id="nj-prio" placeholder="1, 2, 3..."></div>
@@ -930,7 +930,7 @@ function submitAdd(){
     pr:document.getElementById('nj-pr').value,os:document.getElementById('nj-os').value,
     weeks:checked};
   [...DEPTS,...DOLLAR_DEPTS].forEach(d=>{data[d.key]=parseFloat(document.getElementById(`nj-${d.key}`).value)||0;});
-  addRow(data);showToast(`"${job||wo}" added to ${checked.length} week(s)`);renderPanels('add');
+  addRow(data);showToast(`Job #${job||wo} added to ${checked.length} week(s)`);renderPanels('add');
 }
 
 // MANAGE JOBS
@@ -939,9 +939,9 @@ function renderJobsTab(){
     ?'<p style="color:#888;font-size:12px;padding:12px 0;">No jobs on schedule.</p>'
     :rows.map(r=>`<div class="jitem">
       <div>
-        <div class="jname">${r.job||'(no name)'}</div>
-        <div class="jsub">WO ${r.wo||'—'} · On Site: ${r.os||'—'} · Priority: ${r.prio||'—'}</div>
-        <div class="jwks">Weeks: ${(r.weeks||[]).join(', ')||'—'}</div>
+        <div class="jname">Job #${r.job||'—'}</div>
+        <div class="jsub">WO# ${r.wo||'—'} · On Site: ${r.os||'—'} · Priority: ${r.prio||'—'}</div>
+        <div class="jwks">Job # ${r.job||'—'} &nbsp;·&nbsp; Weeks: ${(r.weeks||[]).join(', ')||'—'}</div>
       </div>
       <button class="btn btn-red" onclick="admDel(${r.id})">Remove</button>
     </div>`).join('');
