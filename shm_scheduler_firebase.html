@@ -86,6 +86,14 @@ td.dc{padding:0;}
 .ds:focus{outline:2px solid rgba(0,0,0,.2);}
 .v-ns{background:var(--ns);color:var(--ns-t);}.v-ip{background:var(--ip);color:var(--ip-t);}
 .v-done{background:var(--done);color:var(--done-t);}.v-hold{background:var(--hold);color:var(--hold-t);}
+/* material status colors */
+.ms-cell{text-align:center;font-size:10px;font-weight:700;padding:6px 4px;white-space:nowrap;}
+.ms-fmto{background:#E3F2FD;color:#1565C0;}
+.ms-wait{background:#FFF3E0;color:#BF360C;}
+.ms-del {background:#E8F5E9;color:#1B5E20;}
+.ms-none{background:#fff;color:#aaa;}
+.c-ms{min-width:100px;width:100px;}
+.c-ea{min-width:90px;width:90px;}
 .ttl{padding:8px 5px;text-align:center;font-weight:700;font-size:13px;background:#f2f2f2;color:var(--grey1);}
 .act{padding:4px 4px;text-align:center;background:#f8f8f8;}
 tr.tot td{background:#1a1a1a!important;color:#fff!important;font-weight:700;font-size:12px;padding:7px 5px;text-align:center;border-right:1px solid #333;}
@@ -332,6 +340,8 @@ function buildThead(wkNum){
   tr1.appendChild(mTh('PRI.','th-info c-prio'));
   tr1.appendChild(mTh('JOB #','th-info c-job'));
   tr1.appendChild(mTh('WO #','th-info c-wo'));
+  tr1.appendChild(mTh('MTL STATUS','th-info c-ms'));
+  tr1.appendChild(mTh('EXP. ARRIVAL','th-info c-ea'));
   tr1.appendChild(mTh('ON SITE','th-info c-os'+(adminOn?'':' col-hidden')));
   DEPTS.forEach(d=>tr1.appendChild(mTh(d.label.toUpperCase(),'c-dp')));
   tr1.appendChild(mTh('TTL','th-ttl c-ttl'));
@@ -339,7 +349,7 @@ function buildThead(wkNum){
   thead.appendChild(tr1);
 
   const tr2=document.createElement('tr');tr2.className='th-c';
-  const infoCols=adminOn?6:4;
+  const infoCols=adminOn?8:6;
   const thL=document.createElement('th');thL.colSpan=infoCols;thL.textContent='DEPT CAPACITY (HRS)';
   thL.style.cssText='text-align:right;padding-right:10px;font-size:10px;color:#888';
   tr2.appendChild(thL);
@@ -367,6 +377,26 @@ function buildRow(row,wkNum){
   tr.appendChild(iCell('prio','ci-pri',false));
   tr.appendChild(iCell('job','ci-job',false));
   tr.appendChild(iCell('wo','ci-wo',false));
+
+  // Material Status cell -- color coded
+  (function(){
+    const td=document.createElement('td');td.className='info-cell';
+    const ms=row.mtlStatus||'';
+    const msCls={'FINAL MTO':'ms-fmto','WAITING ON MATERIAL':'ms-wait','DELIVERED':'ms-del'};
+    const span=document.createElement('div');
+    span.className='ms-cell '+(msCls[ms]||'ms-none');
+    span.textContent=ms||'—';
+    td.appendChild(span);tr.appendChild(td);
+  })();
+
+  // Expected Arrival cell
+  (function(){
+    const td=document.createElement('td');td.className='info-cell';
+    const inp=document.createElement('input');inp.type='text';inp.readOnly=true;
+    inp.className='ci';inp.value=row.expArrival||'';inp.tabIndex=-1;
+    td.appendChild(inp);tr.appendChild(td);
+  })();
+
   tr.appendChild(iCell('os','',true));
 
   DEPTS.forEach(d=>{
@@ -435,7 +465,7 @@ function updateTotalsInline(wkNum){
 
 function buildTotalsRow(wkRows,wkNum){
   const tr=document.createElement('tr');tr.className='tot';
-  const cs=adminOn?6:4;
+  const cs=adminOn?8:6;
   const tl=document.createElement('td');tl.colSpan=cs;tl.className='tot-lbl';tl.textContent='TOTALS →';tr.appendChild(tl);
   DEPTS.forEach(d=>{
     const t=wkRows.reduce((s,r)=>s+(r['h_'+d.key+'_'+wkNum]||0),0);
@@ -471,19 +501,19 @@ function exportExcel(){
   const wb=XLSX.utils.book_new();
   const curWk=config.week||25;
   const visWeeks=showAll&&adminOn?getWeeksWithJobs():[curWk,curWk+1];
-  const hdr=['WEEK','LEAD TIME','PROD. RELEASE','PRIORITY','JOB #','WO #','ON SITE',...DEPTS.map(d=>d.label),'TTL',...DOLLAR_DEPTS.map(d=>d.label)];
+  const hdr=['WEEK','LEAD TIME','PROD. RELEASE','PRIORITY','JOB #','WO #','MTL STATUS','EXP. ARRIVAL','ON SITE',...DEPTS.map(d=>d.label),'TTL',...DOLLAR_DEPTS.map(d=>d.label)];
   const data=[hdr];
   visWeeks.forEach(wk=>{
     const wkRows=getRowsArray().filter(r=>r.weeks&&r.weeks[wk]);
     if(wkRows.length===0)return;
     wkRows.forEach(r=>{
-      data.push([wk,r.lt,r.pr,r.prio,r.job,r.wo,r.os,...DEPTS.map(d=>r['h_'+d.key+'_'+wk]||0),deptTtl(r,wk),...DOLLAR_DEPTS.map(d=>r[d.key]||0)]);
+      data.push([wk,r.lt,r.pr,r.prio,r.job,r.wo,r.mtlStatus||'',r.expArrival||'',r.os,...DEPTS.map(d=>r['h_'+d.key+'_'+wk]||0),deptTtl(r,wk),...DOLLAR_DEPTS.map(d=>r[d.key]||0)]);
     });
-    data.push(['','','','','TOTALS','','',...DEPTS.map(d=>wkRows.reduce((s,r)=>s+(r['h_'+d.key+'_'+wk]||0),0)),wkRows.reduce((s,r)=>s+deptTtl(r,wk),0),'','']);
+    data.push(['','','','','TOTALS','','','','',...DEPTS.map(d=>wkRows.reduce((s,r)=>s+(r['h_'+d.key+'_'+wk]||0),0)),wkRows.reduce((s,r)=>s+deptTtl(r,wk),0),'','']);
     data.push([]);
   });
   const ws=XLSX.utils.aoa_to_sheet(data);
-  ws['!cols']=[{wch:6},{wch:10},{wch:12},{wch:6},{wch:20},{wch:10},{wch:12},...DEPTS.map(()=>({wch:11})),{wch:8},...DOLLAR_DEPTS.map(()=>({wch:14}))];
+  ws['!cols']=[{wch:6},{wch:10},{wch:12},{wch:6},{wch:20},{wch:10},{wch:18},{wch:12},{wch:12},...DEPTS.map(()=>({wch:11})),{wch:8},...DOLLAR_DEPTS.map(()=>({wch:14}))];
   XLSX.utils.book_append_sheet(wb,ws,'Schedule');
   const dn=new Date().toISOString().slice(0,10).replace(/-/g,'');
   XLSX.writeFile(wb,`SHM_Scheduler_${dn}.xlsx`);
@@ -536,6 +566,12 @@ function renderAddTab(){
     <div class="fr"><label>Prod. Release Date</label><input type="date" id="nj-pr" oninput="calcLT()"></div>
     <div class="fr"><label>On Site Date</label><input type="date" id="nj-os" oninput="calcLT()"></div>
   </div>
+  <div class="fg" style="margin-top:12px">
+    <div class="fr"><label>Material Status</label>
+      <select id="nj-mtl"><option value="">— Select —</option><option value="FINAL MTO">FINAL MTO</option><option value="WAITING ON MATERIAL">WAITING ON MATERIAL</option><option value="DELIVERED">DELIVERED</option></select>
+    </div>
+    <div class="fr"><label>Expected Arrival</label><input type="date" id="nj-ea"></div>
+  </div>
   <div class="fsec">Assign to Week(s)</div>
   <p style="font-size:11px;color:var(--grey3);margin-bottom:6px">Hours and status are tracked independently per week.</p>
   <div class="wk-assign">${wkChecks}</div>
@@ -566,6 +602,8 @@ function submitAdd(){
     pr:document.getElementById('nj-pr').value,os:document.getElementById('nj-os').value,
     out:parseFloat(document.getElementById('nj-out').value)||0,
     pow:parseFloat(document.getElementById('nj-pow').value)||0,
+    mtlStatus:document.getElementById('nj-mtl').value||'',
+    expArrival:document.getElementById('nj-ea').value||'',
     weeks:{}};
   checked.forEach(w=>{row.weeks[w]=true;});
   // set dept hours + status per week
@@ -664,6 +702,12 @@ function renderEditTab(){
     <div class="fr"><label>Prod. Release Date</label><input type="date" id="ej-pr" value="${r.pr||''}" oninput="calcEditLT()"></div>
     <div class="fr"><label>On Site Date</label><input type="date" id="ej-os" value="${r.os||''}" oninput="calcEditLT()"></div>
   </div>
+  <div class="fg" style="margin-top:12px">
+    <div class="fr"><label>Material Status</label>
+      <select id="ej-mtl"><option value="" ${!r.mtlStatus?'selected':''}>— Select —</option><option value="FINAL MTO" ${r.mtlStatus==='FINAL MTO'?'selected':''}>FINAL MTO</option><option value="WAITING ON MATERIAL" ${r.mtlStatus==='WAITING ON MATERIAL'?'selected':''}>WAITING ON MATERIAL</option><option value="DELIVERED" ${r.mtlStatus==='DELIVERED'?'selected':''}>DELIVERED</option></select>
+    </div>
+    <div class="fr"><label>Expected Arrival</label><input type="date" id="ej-ea" value="${r.expArrival||''}"></div>
+  </div>
   <div class="fsec">Assign to Week(s)</div>
   <p style="font-size:11px;color:var(--grey3);margin-bottom:6px">Check or uncheck weeks. New weeks get current hours. Unchecking removes this job from that week.</p>
   <div class="wk-assign">${wkChecks}</div>
@@ -704,6 +748,8 @@ function saveEdit(){
   r.os=document.getElementById('ej-os').value;
   r.out=parseFloat(document.getElementById('ej-out').value)||0;
   r.pow=parseFloat(document.getElementById('ej-pow').value)||0;
+  r.mtlStatus=document.getElementById('ej-mtl').value||'';
+  r.expArrival=document.getElementById('ej-ea').value||'';
 
   // update weeks
   const checked=Array.from(document.querySelectorAll('input[name="ej-wk"]:checked')).map(x=>parseInt(x.value));
