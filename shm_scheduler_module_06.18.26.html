@@ -893,10 +893,10 @@ function renderAddTab(){
     <div class="fg">
       <div class="fr"><label>Job #</label><input type="text" id="nj-job" placeholder="e.g. 24-0412"></div>
       <div class="fr"><label>WO #</label><input type="text" id="nj-wo" placeholder="e.g. 46215"></div>
-      <div class="fr"><label>Lead Time (days)</label><input type="number" id="nj-lt" placeholder="0"></div>
+      <div class="fr"><label>Lead Time (days) — auto</label><input type="text" id="nj-lt" placeholder="Auto" readonly style="background:#f0f0f0;color:#666;cursor:default;"></div>
       <div class="fr"><label>Priority</label><input type="text" id="nj-prio" placeholder="1, 2, 3..."></div>
-      <div class="fr"><label>Prod. Release Date</label><input type="date" id="nj-pr"></div>
-      <div class="fr"><label>On Site Date</label><input type="date" id="nj-os"></div>
+      <div class="fr"><label>Prod. Release Date</label><input type="date" id="nj-pr" oninput="calcLeadTime()"></div>
+      <div class="fr"><label>On Site Date</label><input type="date" id="nj-os" oninput="calcLeadTime()"></div>
     </div>
     <div class="fsec">Assign to Week(s)</div>
     <p style="font-size:11px;color:var(--grey3);margin-bottom:8px">Select all weeks this job is active. Hours and status are tracked independently per week.</p>
@@ -931,7 +931,7 @@ function submitAdd(){
   if(!job&&!wo){showToast('Enter a Job Name or WO #');return;}
   const checked=Array.from(document.querySelectorAll('input[name="nj-wk"]:checked')).map(x=>parseInt(x.value));
   if(checked.length===0){showToast('Select at least one week');return;}
-  const data={job,wo,lt:parseFloat(document.getElementById('nj-lt').value)||'',
+  const data={job,wo,lt:document.getElementById('nj-lt').value||'',
     prio:document.getElementById('nj-prio').value.trim(),
     pr:document.getElementById('nj-pr').value,os:document.getElementById('nj-os').value,
     weeks:checked};
@@ -1076,6 +1076,23 @@ function showToast(msg){
   setTimeout(()=>t.classList.remove('show'),2800);
 }
 document.getElementById('adm-overlay').addEventListener('click',function(e){if(e.target===this)closeAdmin();});
+
+
+function calcLeadTime(){
+  const pr = document.getElementById('nj-pr');
+  const os = document.getElementById('nj-os');
+  const lt = document.getElementById('nj-lt');
+  if(!pr||!os||!lt) return;
+  if(pr.value && os.value){
+    const prDate = new Date(pr.value);
+    const osDate = new Date(os.value);
+    const diff = Math.round((osDate - prDate) / (1000*60*60*24));
+    lt.value = diff;
+    lt.style.color = diff < 0 ? '#b83232' : '#1a3d2b';
+  } else {
+    lt.value = '';
+  }
+}
 
 // Load logo from storage (stored separately to keep row storage lean)
 async function loadLogo(){
