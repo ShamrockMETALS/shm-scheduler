@@ -512,10 +512,10 @@ function renderPanels(tab){
   document.getElementById('adm-title').textContent='⚙ Admin Panel';
   document.getElementById('adm-body').innerHTML=`<div class="tabs">
   <button class="tab ${tab==='add'?'on':''}" onclick="renderPanels('add')">Add Job</button>
-  <button class="tab ${tab==='jobs'?'on':''}" onclick="renderPanels('jobs')">Manage Jobs</button>
+  <button class="tab ${tab==='jobs'||tab==='edit'?'on':''}" onclick="renderPanels('jobs')">Manage Jobs</button>
   <button class="tab ${tab==='dept'?'on':''}" onclick="renderPanels('dept')">Dept Setup</button>
   </div><div id="tab-c"></div>`;
-  if(tab==='add')renderAddTab();if(tab==='jobs')renderJobsTab();if(tab==='dept')renderDeptTab();
+  if(tab==='add')renderAddTab();if(tab==='jobs')renderJobsTab();if(tab==='edit')renderEditTab();if(tab==='dept')renderDeptTab();
 }
 
 function renderAddTab(){
@@ -589,7 +589,9 @@ function renderJobsTab(){
       return`<div class="jitem"><div><div class="jname">Job #${r.job||'—'}</div>
       <div class="jsub">WO# ${r.wo||'—'} · On Site: ${r.os||'—'} · Priority: ${r.prio||'—'}</div>
       <div class="jwks">Weeks: ${wks}</div></div>
-      <button class="btn btn-red" onclick="admDel('${r._id}')">Remove</button></div>`;
+      <div style="display:flex;gap:6px">
+      <button class="btn btn-gmid" onclick="editJob('${r._id}')">Edit</button>
+      <button class="btn btn-red" onclick="admDel('${r._id}')">Remove</button></div></div>`;
     }).join('');
   document.getElementById('tab-c').innerHTML=`<div class="jlist">${html}</div>
     ${arr.length>0?`<div style="margin-top:12px;text-align:right"><button class="btn" style="background:#eee;color:#b83232;font-size:11px" onclick="if(confirm('Clear ALL jobs?')){db.ref('rows').remove();rows={};renderAll();renderPanels('jobs');}">Clear All</button></div>`:''}`;
@@ -620,6 +622,118 @@ function setShift(key,val){deptSettings[key].shift=val;[8,10,12].forEach(v=>{con
 function updDS(key){const i=document.getElementById('ds-hc-'+key);if(i)deptSettings[key].headcount=parseInt(i.value)||0;refreshCapDisp(key);}
 function refreshCapDisp(key){const el=document.getElementById('ds-cap-'+key);if(el)el.textContent=deptCap(key)+' hrs';}
 function saveDeptBtn(){DEPTS.forEach(d=>{const i=document.getElementById('ds-hc-'+d.key);if(i)deptSettings[d.key].headcount=parseInt(i.value)||0;});saveDeptSettingsFB();renderAll();showToast('Dept settings saved');renderPanels('dept');}
+
+
+// ══════════════════════════════════════════════════
+// EDIT JOB
+// ══════════════════════════════════════════════════
+let editingId=null;
+
+function editJob(id){
+  editingId=id;
+  const r=rows[id];if(!r)return;
+  renderPanels('edit');
+}
+
+function renderEditTab(){
+  const r=rows[editingId];
+  if(!r){renderPanels('jobs');return;}
+  const curWk=config.week||25;
+  const wkStart=Math.max(1,curWk-1);
+  const wkEnd=Math.min(52,curWk+6);
+  const rowWeeks=r.weeks||{};
+  let wkChecks='';
+  // show all weeks this job is in PLUS the standard range
+  const allWks=new Set();
+  for(let w=wkStart;w<=wkEnd;w++)allWks.add(w);
+  Object.keys(rowWeeks).forEach(k=>{if(rowWeeks[k])allWks.add(parseInt(k));});
+  Array.from(allWks).sort((a,b)=>a-b).forEach(w=>{
+    const checked=rowWeeks[w]?'checked':'';
+    wkChecks+=`<label class="wk-check"><input type="checkbox" name="ej-wk" value="${w}" ${checked}><span>Wk ${w}</span></label>`;
+  });
+
+  document.getElementById('tab-c').innerHTML=`
+  <div style="background:var(--brand-lite);padding:10px 14px;border-radius:4px;margin-bottom:14px;font-size:12px;color:var(--gdark);font-weight:700;">
+    Editing Job #${r.job||'—'} · WO# ${r.wo||'—'}
+  </div>
+  <div class="fg">
+    <div class="fr"><label>Job #</label><input type="text" id="ej-job" value="${r.job||''}"></div>
+    <div class="fr"><label>WO #</label><input type="text" id="ej-wo" value="${r.wo||''}"></div>
+    <div class="fr"><label>Lead Time (days) — auto</label><input type="text" id="ej-lt" value="${r.lt||''}" readonly style="background:#f0f0f0;color:#666;cursor:default;"></div>
+    <div class="fr"><label>Priority</label><input type="text" id="ej-prio" value="${r.prio||''}"></div>
+    <div class="fr"><label>Prod. Release Date</label><input type="date" id="ej-pr" value="${r.pr||''}" oninput="calcEditLT()"></div>
+    <div class="fr"><label>On Site Date</label><input type="date" id="ej-os" value="${r.os||''}" oninput="calcEditLT()"></div>
+  </div>
+  <div class="fsec">Assign to Week(s)</div>
+  <p style="font-size:11px;color:var(--grey3);margin-bottom:6px">Check or uncheck weeks. New weeks get current hours. Unchecking removes this job from that week.</p>
+  <div class="wk-assign">${wkChecks}</div>
+  <div class="fsec">Department Hours (updates all checked weeks)</div>
+  <div class="dhg">${DEPTS.map(d=>{
+    // get hours from the first active week as default
+    const firstWk=Object.keys(rowWeeks).find(k=>rowWeeks[k]);
+    const hrs=firstWk?r['h_'+d.key+'_'+firstWk]||0:0;
+    return '<div class="fr"><label>'+d.label+'</label><input type="number" id="ej-'+d.key+'" min="0" step="0.1" value="'+hrs+'"></div>';
+  }).join('')}</div>
+  <div class="fsec">Outsourced Work (Dollar Values)</div>
+  <div class="dhg" style="grid-template-columns:1fr 1fr">
+    ${DOLLAR_DEPTS.map(d=>'<div class="fr"><label>'+d.label+'</label><input type="number" id="ej-'+d.key+'" min="0" step="0.01" value="'+(r[d.key]||0)+'"></div>').join('')}
+  </div>
+  <div class="factions">
+    <button class="btn" style="background:#eee;color:#555" onclick="renderPanels('jobs')">Cancel</button>
+    <button class="btn btn-gmid" onclick="saveEdit()">Save Changes</button>
+  </div>`;
+}
+
+function calcEditLT(){
+  const pr=document.getElementById('ej-pr'),os=document.getElementById('ej-os'),lt=document.getElementById('ej-lt');
+  if(!pr||!os||!lt)return;
+  if(pr.value&&os.value){const diff=Math.round((new Date(os.value)-new Date(pr.value))/864e5);lt.value=diff;lt.style.color=diff<0?'#b83232':'#1a3d2b';}
+  else lt.value='';
+}
+
+function saveEdit(){
+  if(!editingId||!rows[editingId])return;
+  const r=rows[editingId];
+
+  // update info fields
+  r.job=document.getElementById('ej-job').value.trim();
+  r.wo=document.getElementById('ej-wo').value.trim();
+  r.lt=document.getElementById('ej-lt').value||'';
+  r.prio=document.getElementById('ej-prio').value.trim();
+  r.pr=document.getElementById('ej-pr').value;
+  r.os=document.getElementById('ej-os').value;
+  r.out=parseFloat(document.getElementById('ej-out').value)||0;
+  r.pow=parseFloat(document.getElementById('ej-pow').value)||0;
+
+  // update weeks
+  const checked=Array.from(document.querySelectorAll('input[name="ej-wk"]:checked')).map(x=>parseInt(x.value));
+  const oldWeeks=r.weeks||{};
+  const newWeeks={};
+
+  checked.forEach(w=>{
+    newWeeks[w]=true;
+    // update hours for all checked weeks
+    DEPTS.forEach(d=>{
+      r['h_'+d.key+'_'+w]=parseFloat(document.getElementById('ej-'+d.key).value)||0;
+      // preserve existing status, default to NOT STARTED for new weeks
+      if(!r['s_'+d.key+'_'+w])r['s_'+d.key+'_'+w]='NOT STARTED';
+    });
+  });
+
+  // clean up unchecked weeks
+  Object.keys(oldWeeks).forEach(w=>{
+    if(!newWeeks[w]){
+      delete r.weeks[w];
+      DEPTS.forEach(d=>{delete r['s_'+d.key+'_'+w];delete r['h_'+d.key+'_'+w];});
+    }
+  });
+
+  r.weeks=newWeeks;
+  db.ref('rows/'+editingId).set(r);
+  showToast('Job #'+(r.job||r.wo)+' updated');
+  editingId=null;
+  renderPanels('jobs');
+}
 
 // ══════════════════════════════════════════════════
 // HELPERS
