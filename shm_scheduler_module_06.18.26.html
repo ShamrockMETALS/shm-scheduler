@@ -163,8 +163,9 @@ td.dc{padding:0;}
   text-align:center;color:inherit;border-right:1px solid rgba(0,0,0,.12);}
 .dh:focus{outline:none;background:rgba(255,255,255,.4);}
 .dh[readonly]{color:inherit;opacity:1;}
-/* hide number spinners for admin input */
-.dh::-webkit-inner-spin-button,.dh::-webkit-outer-spin-button{opacity:.4;height:14px;}
+/* spinners: subtle for admin, completely hidden for floor (type=text so never show anyway) */
+.dh::-webkit-inner-spin-button,.dh::-webkit-outer-spin-button{opacity:.35;height:12px;}
+input[type=text].dh::-webkit-inner-spin-button,input[type=text].dh::-webkit-outer-spin-button{display:none;}
 .ds{flex:1;min-width:70px;border:none;background:transparent;
   padding:0 2px;font-family:var(--font);font-size:9px;font-weight:700;
   text-align:center;text-align-last:center;
@@ -662,15 +663,20 @@ function buildRow(row,wkNum){
 
     const div=document.createElement('div');div.className='dr';
     const hi=document.createElement('input');
+    hi.className='dh';
+    const hrsDisplay = (hrs===0||hrs==='0') ? '0' : (String(hrs).endsWith('.0') ? parseInt(hrs) : hrs);
     if(adminOn){
       hi.type='number';hi.min='0';hi.step='0.1';
+      hi.value=hrs||0;
       hi.addEventListener('change',e=>updField(row.id,hKey,parseFloat(e.target.value)||0));
     } else {
-      hi.type='text';hi.readOnly=true;hi.tabIndex=-1;
-      hi.style.cssText='pointer-events:none;cursor:default;';
+      hi.type='text';
+      hi.readOnly=true;
+      hi.tabIndex=-1;
+      hi.value=hrsDisplay;
+      hi.style.cssText='pointer-events:none;cursor:default;user-select:none;-webkit-user-select:none;';
     }
-    hi.className='dh';
-    hi.value=hrs||0;hi.placeholder='0';
+    hi.placeholder='0';
 
     const sel=document.createElement('select');sel.className='ds';
     ST.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;if(s===st)o.selected=true;sel.appendChild(o);});
