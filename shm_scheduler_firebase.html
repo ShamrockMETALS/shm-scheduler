@@ -218,7 +218,7 @@ const DOLLAR_DEPTS=[{key:'out',label:'Outsource ($)'},{key:'pow',label:'Powder C
 const ST=['NOT STARTED','IN PROCESS','DONE','HOLD'];
 const SC={'NOT STARTED':'v-ns','IN PROCESS':'v-ip','DONE':'v-done','HOLD':'v-hold'};
 
-function defDS(){const s={};DEPTS.forEach(d=>{s[d.key]={headcount:1,shift:8};});s.fab.headcount=8;s.pol.headcount=7;s.fin.headcount=3;return s;}
+function defDS(){const s={};DEPTS.forEach(d=>{s[d.key]={headcount:1,shift:8};});s.fab.headcount=8;s.pol.headcount=7;s.fin.headcount=3;s.core.headcount=2;return s;}
 
 // Current week number for reference
 function currentISOWeek(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+3-(d.getDay()+6)%7);const w1=new Date(d.getFullYear(),0,4);return 1+Math.round(((d-w1)/864e5-3+(w1.getDay()+6)%7)/7);}
