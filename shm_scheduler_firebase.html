@@ -10,7 +10,7 @@
 <style>
 :root{--brand:#5D8755;--brand-dark:#3d5c38;--brand-lite:#e6f0e4;--gdark:#1A3D2B;--gmid:#2D6A4F;
 --grey1:#1e1e1e;--grey2:#444;--grey3:#888;--gb:#d0d0d0;--white:#fff;--font:Arial,sans-serif;
---ns:#FAFAFA;--ns-t:#9E9E9E;--ip:#FFF8E1;--ip-t:#7D6608;--done:#EDF5EB;--done-t:#3A6B34;--hold:#FBE9E7;--hold-t:#A8361A;}
+--ns:#fff;--ns-t:#2a2a2a;--ip:#FFF59D;--ip-t:#F57F17;--done:#A5D6A7;--done-t:#1B5E20;--hold:#FFCC80;--hold-t:#E65100;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:var(--font);background:#ddd;color:var(--grey1);font-size:13px;min-height:100vh;}
 header{background:var(--brand);padding:0 18px;display:flex;align-items:center;justify-content:space-between;
@@ -49,15 +49,13 @@ font-size:12px;font-weight:700;cursor:pointer;color:var(--grey3);transition:all 
 .cap-chip{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);border-radius:3px;padding:3px 9px;
 font-size:11px;color:#fff;display:flex;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0;}
 .cap-chip .cn{opacity:.65;font-size:10px;}.cap-chip .cu{font-weight:700;}.cap-chip .co{opacity:.55;font-size:10px;}
-.cap-chip.over{background:rgba(216,67,21,.3);border-color:rgba(216,67,21,.6);}.cap-chip.over .cu{color:#FFCCBC;}
-.cap-chip.warn{background:rgba(249,168,37,.25);border-color:rgba(249,168,37,.5);}.cap-chip.warn .cu{color:#FFF8E1;}
+.cap-chip.over{background:rgba(180,40,40,.35);border-color:#ff9090;}.cap-chip.over .cu{color:#ffc0c0;}
+.cap-chip.warn{background:rgba(200,160,0,.3);border-color:#ffd166;}.cap-chip.warn .cu{color:#fff3a0;}
 .leg-strip{background:#f4f4f4;border-bottom:1px solid var(--gb);padding:6px 18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .leg-lbl{font-size:10px;font-weight:700;color:var(--grey3);text-transform:uppercase;letter-spacing:.6px;}
 .pip{display:inline-flex;align-items:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:3px;border:1px solid rgba(0,0,0,.12);}
-.pip-ns{background:#FAFAFA;color:#9E9E9E;border-color:#BDBDBD;border-left:3px solid #BDBDBD;}
-.pip-ip{background:#FFF8E1;color:#7D6608;border-color:#F9A825;border-left:3px solid #F9A825;}
-.pip-done{background:#EDF5EB;color:#3A6B34;border-color:#5D8755;border-left:3px solid #5D8755;}
-.pip-hold{background:#FBE9E7;color:#A8361A;border-color:#D84315;border-left:3px solid #D84315;}
+.pip-ns{background:var(--ns);color:var(--ns-t);border-color:#ccc;}.pip-ip{background:var(--ip);color:var(--ip-t);}
+.pip-done{background:var(--done);color:var(--done-t);}.pip-hold{background:var(--hold);color:var(--hold-t);}
 .leg-note{font-size:11px;color:var(--grey3);margin-left:6px;}
 .main{padding:14px 14px 80px;}
 .week-section{margin-bottom:22px;}
@@ -93,27 +91,25 @@ td.dc{padding:0;}
 .dh{flex:0 0 46px;width:46px;border:none;background:transparent;padding:0 4px;font-family:var(--font);font-size:12px;font-weight:700;text-align:center;color:inherit;border-right:1px solid rgba(0,0,0,.12);pointer-events:none;cursor:default;user-select:none;}
 .ds{flex:1;min-width:70px;border:none;background:transparent;padding:0 2px;font-family:var(--font);font-size:9px;font-weight:700;text-align:center;text-align-last:center;cursor:pointer;appearance:none;-webkit-appearance:none;color:inherit;}
 .ds:focus{outline:2px solid rgba(0,0,0,.2);}
-.v-ns{background:var(--ns);color:var(--ns-t);border-left:3px solid #BDBDBD;}
-.v-ip{background:var(--ip);color:var(--ip-t);border-left:3px solid #F9A825;}
-.v-done{background:var(--done);color:var(--done-t);border-left:3px solid #5D8755;}
-.v-hold{background:var(--hold);color:var(--hold-t);border-left:3px solid #D84315;}
+.v-ns{background:var(--ns);color:var(--ns-t);}.v-ip{background:var(--ip);color:var(--ip-t);}
+.v-done{background:var(--done);color:var(--done-t);}.v-hold{background:var(--hold);color:var(--hold-t);}
 /* material status colors */
 .ms-cell{text-align:center;font-size:10px;font-weight:700;padding:6px 4px;white-space:nowrap;}
-.ms-fmto{background:#E3EEF9;color:#2C5F9A;border-left:3px solid #4A90D9;font-weight:700;}
-.ms-wait{background:#FCEAE7;color:#A83020;border-left:3px solid #D84315;font-weight:700;}
-.ms-del {background:#EDF5EB;color:#3A6B34;border-left:3px solid #5D8755;font-weight:700;}
-.ms-none{background:#FAFAFA;color:#BDBDBD;border-left:3px solid #E0E0E0;}
-/* priority colors -- data viz inspired */
-td.pri-1{background:#FCEAE7 !important;color:#A83020;font-weight:700;border-left:3px solid #D84315;}
-td.pri-2{background:#FFF3E0 !important;color:#A85B0A;font-weight:700;border-left:3px solid #EF8C1A;}
-td.pri-3{background:#ECEFF1 !important;color:#546E7A;font-weight:700;border-left:3px solid #90A4AE;}
+.ms-fmto{background:#BBDEFB;color:#1565C0;}
+.ms-wait{background:#EF9A9A;color:#B71C1C;}
+.ms-del {background:#A5D6A7;color:#1B5E20;}
+.ms-none{background:#fff;color:#aaa;}
+/* priority colors -- google material design */
+td.pri-1{background:#EF9A9A !important;color:#B71C1C;font-weight:700;}
+td.pri-2{background:#FFAB91 !important;color:#BF360C;font-weight:700;}
+td.pri-3{background:#EEEEEE !important;color:#616161;font-weight:700;}
 td.pri-1 .ci,td.pri-2 .ci,td.pri-3 .ci{color:inherit;font-weight:700;}
 .c-ms{min-width:100px;width:100px;}
 .c-ea{min-width:90px;width:90px;}
 .c-sd{min-width:90px;width:90px;}
-.ttl{padding:8px 5px;text-align:center;font-weight:700;font-size:13px;background:#F0F4EF;color:#2D4928;}
+.ttl{padding:8px 5px;text-align:center;font-weight:700;font-size:13px;background:#f2f2f2;color:var(--grey1);}
 .act{padding:4px 4px;text-align:center;background:#f8f8f8;}
-tr.tot td{background:#1C2E1A!important;color:#E8F0E6!important;font-weight:700;font-size:12px;padding:7px 5px;text-align:center;border-right:1px solid #333;}
+tr.tot td{background:#1a1a1a!important;color:#fff!important;font-weight:700;font-size:12px;padding:7px 5px;text-align:center;border-right:1px solid #333;}
 tr.tot td.tot-lbl{text-align:right;padding-right:10px;font-size:10px;color:#888!important;}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;align-items:flex-start;justify-content:center;padding:36px 16px;overflow-y:auto;}
 .overlay.open{display:flex;}
