@@ -95,14 +95,14 @@ td.dc{padding:0;}
 .v-done{background:var(--done);color:var(--done-t);}.v-hold{background:var(--hold);color:var(--hold-t);}
 /* material status colors */
 .ms-cell{text-align:center;font-size:10px;font-weight:700;padding:6px 4px;white-space:nowrap;}
-.ms-fmto{background:#d6e4f5;color:#3361A3;}
-.ms-wait{background:#f8d7d0;color:#C02E11;}
-.ms-del {background:#cef0d8;color:#0e7a33;}
+.ms-fmto{background:#d4e4f7;color:#4078c0;}
+.ms-wait{background:#fddcd8;color:#cf4835;}
+.ms-del {background:#d2f4da;color:#1a8535;}
 .ms-none{background:#fff;color:#aaa;}
-/* priority colors */
-.pri-1{background:#f8d0d0;color:#b92020;font-weight:700;}
-.pri-2{background:#fae0c8;color:#b5600a;font-weight:700;}
-.pri-3{background:#e8e8e8;color:#555;font-weight:700;}
+/* priority colors -- github dark theme inspired */
+.pri-1{background:#fddcd8;color:#cf4835;font-weight:700;}
+.pri-2{background:#fde8cc;color:#b35d00;font-weight:700;}
+.pri-3{background:#e2e2e6;color:#5a5a5f;font-weight:700;}
 .c-ms{min-width:100px;width:100px;}
 .c-ea{min-width:90px;width:90px;}
 .c-sd{min-width:90px;width:90px;}
@@ -451,7 +451,7 @@ function buildRow(row,wkNum){
   (function(){
     const td=document.createElement('td');td.className='info-cell';
     const ms=row.mtlStatus||'';
-    const msCls={'FINAL MTO':'ms-fmto','WAITING ON MATERIAL':'ms-wait','DELIVERED':'ms-del'};
+    const msCls={'FINAL MTO':'ms-fmto','WAITING ON MATERIAL':'ms-wait','SHOP':'ms-del'};
     const span=document.createElement('div');
     span.className='ms-cell '+(msCls[ms]||'ms-none');
     span.textContent=ms||'—';
@@ -666,7 +666,7 @@ function renderAddTab(){
   </div>
   <div class="fg" style="margin-top:12px">
     <div class="fr"><label>Material Status</label>
-      <select id="nj-mtl"><option value="">— Select —</option><option value="FINAL MTO">FINAL MTO</option><option value="WAITING ON MATERIAL">WAITING ON MATERIAL</option><option value="DELIVERED">DELIVERED</option></select>
+      <select id="nj-mtl"><option value="">— Select —</option><option value="FINAL MTO">FINAL MTO</option><option value="WAITING ON MATERIAL">WAITING ON MATERIAL</option><option value="SHOP">SHOP</option></select>
     </div>
     <div class="fr"><label>Expected Arrival</label><input type="date" id="nj-ea"></div>
   </div>
@@ -802,7 +802,7 @@ function renderEditTab(){
   </div>
   <div class="fg" style="margin-top:12px">
     <div class="fr"><label>Material Status</label>
-      <select id="ej-mtl"><option value="" ${!r.mtlStatus?'selected':''}>— Select —</option><option value="FINAL MTO" ${r.mtlStatus==='FINAL MTO'?'selected':''}>FINAL MTO</option><option value="WAITING ON MATERIAL" ${r.mtlStatus==='WAITING ON MATERIAL'?'selected':''}>WAITING ON MATERIAL</option><option value="DELIVERED" ${r.mtlStatus==='DELIVERED'?'selected':''}>DELIVERED</option></select>
+      <select id="ej-mtl"><option value="" ${!r.mtlStatus?'selected':''}>— Select —</option><option value="FINAL MTO" ${r.mtlStatus==='FINAL MTO'?'selected':''}>FINAL MTO</option><option value="WAITING ON MATERIAL" ${r.mtlStatus==='WAITING ON MATERIAL'?'selected':''}>WAITING ON MATERIAL</option><option value="SHOP" ${r.mtlStatus==='SHOP'?'selected':''}>SHOP</option></select>
     </div>
     <div class="fr"><label>Expected Arrival</label><input type="date" id="ej-ea" value="${r.expArrival||''}"></div>
   </div>
