@@ -63,6 +63,13 @@ font-size:11px;color:#fff;display:flex;align-items:center;gap:4px;white-space:no
 .week-section-hdr .wk-label{font-size:14px;letter-spacing:.6px;}
 .week-section-hdr .wk-meta{opacity:.65;font-size:11px;}
 .week-section-hdr .wk-cap{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:3px;padding:3px 10px;font-size:11px;}
+.wk-cap-bar{background:var(--brand);padding:5px 14px;display:flex;align-items:center;overflow-x:auto;border-bottom:1px solid var(--brand-dark);}
+.wk-cap-bar .cap-strip-lbl{font-size:9px;font-weight:700;color:rgba(255,255,255,.55);letter-spacing:.6px;text-transform:uppercase;white-space:nowrap;margin-right:8px;flex-shrink:0;}
+.wk-cap-bar .cap-chips{display:flex;align-items:center;gap:5px;flex-wrap:nowrap;}
+.wk-cap-bar .cap-chip{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.22);border-radius:3px;padding:2px 7px;font-size:10px;color:#fff;display:flex;align-items:center;gap:3px;white-space:nowrap;flex-shrink:0;}
+.wk-cap-bar .cap-chip .cn{opacity:.6;font-size:9px;}.wk-cap-bar .cap-chip .cu{font-weight:700;}.wk-cap-bar .cap-chip .co{opacity:.5;font-size:9px;}
+.wk-cap-bar .cap-chip.over{background:rgba(180,40,40,.35);border-color:#ff9090;}.wk-cap-bar .cap-chip.over .cu{color:#ffc0c0;}
+.wk-cap-bar .cap-chip.warn{background:rgba(200,160,0,.3);border-color:#ffd166;}.wk-cap-bar .cap-chip.warn .cu{color:#fff3a0;}
 .tbl-wrap{background:#fff;border:1px solid var(--gb);border-top:none;border-radius:0 0 5px 5px;overflow-x:auto;box-shadow:0 2px 6px rgba(0,0,0,.08);}
 table{border-collapse:collapse;width:100%;table-layout:auto;}
 thead tr.th-d th{background:var(--gdark);color:#fff;text-align:center;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:7px 4px;border-right:1px solid rgba(255,255,255,.1);white-space:nowrap;}
@@ -168,7 +175,7 @@ tr.tot td.tot-lbl{text-align:right;padding-right:10px;font-size:10px;color:#888!
 <div class="day-grp"><button class="day-btn" onclick="setDays(3)">3</button><button class="day-btn" onclick="setDays(4)">4</button><button class="day-btn on" onclick="setDays(5)">5</button><button class="day-btn" onclick="setDays(6)">6</button></div>
 </div>
 </div>
-<div class="cap-strip"><span class="cap-strip-lbl">Dept Capacity</span><div class="cap-chips" id="cap-chips"></div></div>
+<div class="cap-strip"><span class="cap-strip-lbl" id="cap-strip-title">Total Capacity</span><div class="cap-chips" id="cap-chips"></div></div>
 <div class="leg-strip">
 <span class="leg-lbl">Cell Status</span>
 <span class="pip pip-ns">NOT STARTED</span><span class="pip pip-ip">IN PROCESS</span><span class="pip pip-done">DONE</span><span class="pip pip-hold">HOLD</span>
@@ -314,6 +321,22 @@ function renderMain(){
       <span class="wk-meta">${wkRows.length} job${wkRows.length!==1?'s':''}</span>
       <span class="wk-cap">${fmt(totalHrs)} total hrs</span></div>`;
     section.appendChild(hdr);
+
+    // per-week capacity bar
+    const wkCapBar=document.createElement('div');wkCapBar.className='wk-cap-bar';
+    wkCapBar.innerHTML='<span class="cap-strip-lbl">Wk '+wkNum+' Capacity</span>';
+    const wkChips=document.createElement('div');wkChips.className='cap-chips';
+    DEPTS.forEach(d=>{
+      const cap=deptCap(d.key);
+      const used=wkRows.reduce((s,r)=>s+(r['h_'+d.key+'_'+wkNum]||0),0);
+      const pct=cap>0?used/cap:0;
+      const chip=document.createElement('div');
+      chip.className='cap-chip'+(pct>1?' over':pct>.85?' warn':'');
+      chip.innerHTML='<span class="cn">'+d.label+'</span><span class="cu">'+fmt(used)+'</span><span class="co">/'+deptCap(d.key)+'</span>';
+      wkChips.appendChild(chip);
+    });
+    wkCapBar.appendChild(wkChips);
+    section.appendChild(wkCapBar);
 
     const wrap=document.createElement('div');wrap.className='tbl-wrap';
     const tbl=document.createElement('table');
@@ -481,15 +504,29 @@ function deptTtl(row,wkNum){return DEPTS.reduce((s,d)=>s+(row['h_'+d.key+'_'+wkN
 
 function renderCapStrip(){
   const curWk=config.week||25;
-  const wkRows=getRowsArray().filter(r=>r.weeks&&r.weeks[curWk]);
+  const nextWk=curWk+1;
+  const visWeeks=showAll&&adminOn?getWeeksWithJobs():[curWk,nextWk];
+  // filter to weeks that actually have jobs (for next week)
+  const activeWeeks=visWeeks.filter(wk=>{
+    if(showAll&&adminOn)return true;
+    return getRowsArray().some(r=>r.weeks&&r.weeks[wk]);
+  });
+  if(activeWeeks.length===0)activeWeeks.push(curWk);
+  const numWeeks=activeWeeks.length;
+
+  // update label
+  const title=document.getElementById('cap-strip-title');
+  if(title)title.textContent=numWeeks>1?`Combined Capacity (${numWeeks} weeks)`:'Week Capacity';
+
+  const allRows=getRowsArray();
   const c=document.getElementById('cap-chips');c.innerHTML='';
   DEPTS.forEach(d=>{
-    const cap=deptCap(d.key);
-    const used=wkRows.reduce((s,r)=>s+(r['h_'+d.key+'_'+curWk]||0),0);
+    const cap=deptCap(d.key)*numWeeks;
+    const used=activeWeeks.reduce((ws,wk)=>ws+allRows.filter(r=>r.weeks&&r.weeks[wk]).reduce((s,r)=>s+(r['h_'+d.key+'_'+wk]||0),0),0);
     const pct=cap>0?used/cap:0;
     const chip=document.createElement('div');
     chip.className='cap-chip'+(pct>1?' over':pct>.85?' warn':'');
-    chip.innerHTML=`<span class="cn">${d.label}</span><span class="cu">${fmt(used)}</span><span class="co">/${cap}</span>`;
+    chip.innerHTML='<span class="cn">'+d.label+'</span><span class="cu">'+fmt(used)+'</span><span class="co">/'+cap+'</span>';
     c.appendChild(chip);
   });
 }
