@@ -263,7 +263,14 @@ function saveCfg(){
   config.weekStart=document.getElementById('cfg-wstart').value;
   updateSub();saveConfig();renderCapStrip();renderMain();
 }
-function setDays(n){config.days=n;setDayBtns(n);saveConfig();renderCapStrip();renderMain();}
+function setDays(n){
+  config.days=n;setDayBtns(n);saveConfig();
+  // also update weekConfigs for current week
+  const curWk=config.week||25;
+  const wc=getWeekConfig(curWk);wc.days=n;weekConfigs[curWk]=wc;
+  db.ref('weekConfigs/'+curWk).set(wc);
+  renderCapStrip();renderMain();
+}
 function setDayBtns(n){document.querySelectorAll('.day-btn').forEach(b=>{b.classList.toggle('on',parseInt(b.textContent)===n);});}
 function updateSub(){
   const w=config.week||'—';
@@ -580,9 +587,10 @@ function renderPanels(tab){
   document.getElementById('adm-body').innerHTML=`<div class="tabs">
   <button class="tab ${tab==='add'?'on':''}" onclick="renderPanels('add')">Add Job</button>
   <button class="tab ${tab==='jobs'||tab==='edit'?'on':''}" onclick="renderPanels('jobs')">Manage Jobs</button>
+  <button class="tab ${tab==='weeks'?'on':''}" onclick="renderPanels('weeks')">Weeks</button>
   <button class="tab ${tab==='dept'?'on':''}" onclick="renderPanels('dept')">Dept Setup</button>
   </div><div id="tab-c"></div>`;
-  if(tab==='add')renderAddTab();if(tab==='jobs')renderJobsTab();if(tab==='edit')renderEditTab();if(tab==='dept')renderDeptTab();
+  if(tab==='add')renderAddTab();if(tab==='jobs')renderJobsTab();if(tab==='edit')renderEditTab();if(tab==='weeks')renderWeeksTab();if(tab==='dept')renderDeptTab();
 }
 
 function renderAddTab(){
@@ -816,6 +824,58 @@ function saveEdit(){
   showToast('Job #'+(r.job||r.wo)+' updated');
   editingId=null;
   renderPanels('jobs');
+}
+
+
+// ══════════════════════════════════════════════════
+// WEEKS CONFIG TAB
+// ══════════════════════════════════════════════════
+function renderWeeksTab(){
+  const curWk=config.week||25;
+  const wkStart=Math.max(1,curWk-1);
+  const wkEnd=Math.min(52,curWk+8);
+  let tbody='';
+  for(let w=wkStart;w<=wkEnd;w++){
+    const wc=getWeekConfig(w);
+    const jobCount=getRowsArray().filter(r=>r.weeks&&r.weeks[w]).length;
+    const isCurrent=w===curWk;
+    tbody+='<tr'+(isCurrent?' style="background:var(--brand-lite)"':'')+'>';
+    tbody+='<td style="font-weight:700;padding:7px 8px">Week '+w+(isCurrent?' <span style="font-size:9px;color:var(--gmid)">(CURRENT)</span>':'')+'</td>';
+    tbody+='<td style="padding:7px 8px"><div class="day-grp">';
+    [3,4,5,6].forEach(d=>{
+      tbody+='<button class="day-btn '+(wc.days===d?'on':'')+'" onclick="setWkDays('+w+','+d+')">'+d+'</button>';
+    });
+    tbody+='</div></td>';
+    tbody+='<td style="padding:7px 8px"><div class="sbtns">';
+    [8,10,12].forEach(s=>{
+      tbody+='<button class="sbtn '+(wc.shift===s?'on':'')+'" onclick="setWkShift('+w+','+s+')">'+s+'</button>';
+    });
+    tbody+='</div></td>';
+    tbody+='<td style="padding:7px 8px;color:var(--gmid);font-weight:700">'+jobCount+' jobs</td>';
+    tbody+='</tr>';
+  }
+
+  document.getElementById('tab-c').innerHTML=
+    '<p style="font-size:11px;color:#888;margin-bottom:12px">Set days worked and shift hours for each week independently. Capacity = Headcount (from Dept Setup) x Shift Hours x Days Worked.</p>'+
+    '<table class="dtbl"><thead><tr><th>Week</th><th>Days Worked</th><th>Shift (hrs/day)</th><th>Jobs</th></tr></thead>'+
+    '<tbody>'+tbody+'</tbody></table>';
+}
+
+function setWkDays(wkNum,days){
+  const wc=getWeekConfig(wkNum);
+  wc.days=days;
+  weekConfigs[wkNum]=wc;
+  db.ref('weekConfigs/'+wkNum).set(wc);
+  if(wkNum===config.week){config.days=days;setDayBtns(days);saveConfig();}
+  renderWeeksTab();renderCapStrip();renderMain();
+}
+
+function setWkShift(wkNum,shift){
+  const wc=getWeekConfig(wkNum);
+  wc.shift=shift;
+  weekConfigs[wkNum]=wc;
+  db.ref('weekConfigs/'+wkNum).set(wc);
+  renderWeeksTab();renderCapStrip();renderMain();
 }
 
 // ══════════════════════════════════════════════════
