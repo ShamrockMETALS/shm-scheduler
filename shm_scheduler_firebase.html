@@ -174,6 +174,9 @@ tr.tot td.tot-lbl{text-align:right;padding-right:10px;font-size:10px;color:#888!
 <div><span class="cfg-lbl">Days Worked This Week</span>
 <div class="day-grp"><button class="day-btn" onclick="setDays(3)">3</button><button class="day-btn" onclick="setDays(4)">4</button><button class="day-btn on" onclick="setDays(5)">5</button><button class="day-btn" onclick="setDays(6)">6</button></div>
 </div>
+<div><span class="cfg-lbl">Weeks to Show</span>
+<div class="day-grp"><button class="wv-btn day-btn" onclick="setWeekView(1)">1</button><button class="wv-btn day-btn on" onclick="setWeekView(2)">2</button><button class="wv-btn day-btn" onclick="setWeekView(3)">3</button><button class="wv-btn day-btn" onclick="setWeekView(4)">4</button><button class="wv-btn day-btn" onclick="setWeekView(6)">6</button></div>
+</div>
 </div>
 <div class="cap-strip"><span class="cap-strip-lbl" id="cap-strip-title">Total Capacity</span><div class="cap-chips" id="cap-chips"></div></div>
 <div class="leg-strip">
@@ -216,8 +219,8 @@ function currentISOWeek(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.get
 // ══════════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════════
-let rows={},config={week:currentISOWeek(),weekStart:'',days:5},deptSettings=defDS();
-let adminOn=false,showAll=false,loaded=false;
+let rows={},config={week:currentISOWeek(),weekStart:'',days:5},deptSettings=defDS(),weekConfigs={};
+let adminOn=false,showAll=false,weekView=2,loaded=false;
 
 // ══════════════════════════════════════════════════
 // FIREBASE LISTENERS (real-time sync)
@@ -236,9 +239,14 @@ db.ref('deptSettings').on('value',snap=>{
   if(loaded){renderCapStrip();renderMain();}
   checkLoaded();
 });
+db.ref('weekConfigs').on('value',snap=>{
+  weekConfigs=snap.val()||{};
+  if(loaded){renderCapStrip();renderMain();}
+  checkLoaded();
+});
 
 let loadCount=0;
-function checkLoaded(){loadCount++;if(loadCount>=3&&!loaded){loaded=true;applyCfg();renderAll();document.getElementById('loading').style.display='none';}}
+function checkLoaded(){loadCount++;if(loadCount>=4&&!loaded){loaded=true;applyCfg();renderAll();document.getElementById('loading').style.display='none';}}
 
 // ══════════════════════════════════════════════════
 // FIREBASE WRITES
@@ -279,6 +287,22 @@ function updateSub(){
 }
 function deptCap(key,days){const ds=deptSettings[key];return ds?(ds.headcount*ds.shift*(days||config.days||5)):0;}
 
+function setWeekView(n){
+  weekView=n;
+  document.querySelectorAll('.wv-btn').forEach(b=>{b.classList.toggle('on',parseInt(b.textContent)===n);});
+  renderMain();renderCapStrip();
+}
+
+function getWeekConfig(wkNum){
+  return weekConfigs[wkNum]||{days:config.days||5,shift:8};
+}
+
+function deptCapForWeek(key,wkNum){
+  const ds=deptSettings[key];if(!ds)return 0;
+  const wc=getWeekConfig(wkNum);
+  return ds.headcount*(wc.shift||ds.shift||8)*(wc.days||config.days||5);
+}
+
 function toggleAllWeeks(){
   showAll=!showAll;
   const btn=document.getElementById('btn-allweeks');
@@ -304,21 +328,20 @@ function renderMain(){
   const container=document.getElementById('main-content');
   container.innerHTML='';
   const curWk=config.week||25;
-  const nextWk=curWk+1;
 
   let visWeeks;
   if(showAll&&adminOn){
     visWeeks=getWeeksWithJobs();
     if(visWeeks.length===0)visWeeks=[curWk];
   } else {
-    // Floor: current + next week
-    visWeeks=[curWk,nextWk];
+    visWeeks=[];
+    for(let i=0;i<weekView;i++)visWeeks.push(curWk+i);
   }
 
   visWeeks.forEach(wkNum=>{
     const allRows=getRowsArray();
     const wkRows=allRows.filter(r=>r.weeks&&r.weeks[wkNum]);
-    if(!showAll&&wkRows.length===0&&wkNum===nextWk)return; // don't show empty next week
+    if(!showAll&&wkRows.length===0)return; // don't show empty weeks
 
     const section=document.createElement('div');section.className='week-section';
     const hdr=document.createElement('div');hdr.className='week-section-hdr';
@@ -511,9 +534,9 @@ function deptTtl(row,wkNum){return DEPTS.reduce((s,d)=>s+(row['h_'+d.key+'_'+wkN
 
 function renderCapStrip(){
   const curWk=config.week||25;
-  const nextWk=curWk+1;
-  const visWeeks=showAll&&adminOn?getWeeksWithJobs():[curWk,nextWk];
-  // filter to weeks that actually have jobs (for next week)
+  let visWeeks;
+  if(showAll&&adminOn){visWeeks=getWeeksWithJobs();}
+  else{visWeeks=[];for(let i=0;i<weekView;i++)visWeeks.push(curWk+i);}
   const activeWeeks=visWeeks.filter(wk=>{
     if(showAll&&adminOn)return true;
     return getRowsArray().some(r=>r.weeks&&r.weeks[wk]);
@@ -544,7 +567,7 @@ function renderCapStrip(){
 function exportExcel(){
   const wb=XLSX.utils.book_new();
   const curWk=config.week||25;
-  const visWeeks=showAll&&adminOn?getWeeksWithJobs():[curWk,curWk+1];
+  const visWeeks=showAll&&adminOn?getWeeksWithJobs():(function(){const w=[];for(let i=0;i<weekView;i++)w.push(curWk+i);return w;})();
   const hdr=['WEEK','LEAD TIME','PROD. RELEASE','PRIORITY','JOB #','WO #','MTL STATUS','EXP. ARRIVAL','ON SITE',...DEPTS.map(d=>d.label),'TTL',...DOLLAR_DEPTS.map(d=>d.label)];
   const data=[hdr];
   visWeeks.forEach(wk=>{
