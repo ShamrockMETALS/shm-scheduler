@@ -80,7 +80,7 @@ tbody tr{border-bottom:1px solid #ebebeb;}
 td{padding:0;border-right:1px solid #e5e5e5;vertical-align:middle;}td:last-child{border-right:none;}
 td.info-cell{background:#fff;}
 .c-lt{width:52px;min-width:52px;}.c-pr{width:100px;min-width:90px;}.c-prio{width:42px;min-width:42px;}
-.c-job{width:180px;min-width:150px;}.c-wo{width:88px;min-width:78px;}.c-os{width:100px;min-width:90px;}
+.c-job{width:84px;min-width:76px;}.c-wo{width:120px;min-width:110px;}.c-os{width:100px;min-width:90px;}
 .c-dp{min-width:118px;}.c-ttl{width:52px;min-width:52px;}.c-act{width:36px;min-width:36px;}
 .ci{width:100%;border:none;background:transparent;padding:8px 5px;font-family:var(--font);font-size:12px;color:var(--grey1);text-align:center;pointer-events:none;cursor:default;user-select:none;}
 .ci-job{text-align:left;padding-left:9px;font-weight:700;font-size:13px;}
@@ -695,7 +695,7 @@ function renderAddTab(){
   const wkEnd=Math.min(52,curWk+6);
   let wkChecks='';
   for(let w=wkStart;w<=wkEnd;w++){
-    wkChecks+=`<label class="wk-check"><input type="checkbox" name="nj-wk" value="${w}" ${w===curWk?'checked':''}><span>Wk ${w}</span></label>`;
+    wkChecks+=`<label class="wk-check"><input type="checkbox" name="nj-wk" value="${w}" ${w===curWk?'checked':''} onchange="if(this.checked){var b=document.getElementById('nj-backlog');if(b)b.checked=false;}"><span>Wk ${w}</span></label>`;
   }
   document.getElementById('tab-c').innerHTML=`
   <div class="fg">
@@ -891,7 +891,7 @@ function saveEdit(){
   const r=rows[editingId];
 
   const backlog=document.getElementById('ej-backlog').checked;
-  const _chk=Array.from(document.querySelectorAll('input[name="ej-wk"]:checked')).map(x=>parseInt(x.value));
+  const checked=Array.from(document.querySelectorAll('input[name="ej-wk"]:checked')).map(x=>parseInt(x.value));
   if(checked.length===0&&!backlog){showToast('Check a week, or keep it in Backlog');return;}
   if(checked.length>0&&backlog){showToast('Pick weeks OR Backlog, not both');return;}
   r.backlog=backlog;
@@ -911,7 +911,7 @@ function saveEdit(){
   r.expArrival=document.getElementById('ej-ea').value||'';
 
   // update weeks
-  const checked=Array.from(document.querySelectorAll('input[name="ej-wk"]:checked')).map(x=>parseInt(x.value));
+  // update weeks
   const oldWeeks=r.weeks||{};
   const newWeeks={};
 
