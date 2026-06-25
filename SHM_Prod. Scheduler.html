@@ -1093,6 +1093,19 @@ function fmtDate(iso){if(!iso)return '';const d=new Date(iso+'T00:00:00');return
 // HELPERS
 // ══════════════════════════════════════════════════
 function fmt(n){
+  const num=parseFloat(n)||0;
+  if(num===0)return '0';
+  return (Math.round(num*10)/10).toString();
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  if(!t)return;
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer=setTimeout(()=>{t.classList.remove('show');},2600);
+}
 // click-outside-to-close disabled so in-progress data isn't lost; use the ✕ button to close
 </script>
 </body>
