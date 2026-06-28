@@ -112,6 +112,13 @@ td.pri-1 .ci,td.pri-2 .ci,td.pri-3 .ci{color:inherit;font-weight:700;}
 .c-ms{min-width:100px;width:100px;}
 .c-ea{min-width:90px;width:90px;}
 .c-sd{min-width:90px;width:90px;}
+.c-op{min-width:158px;width:158px;}
+.c-cd{min-width:100px;width:100px;}
+.op-wrap{display:flex;align-items:center;gap:5px;padding:4px 6px;}
+.op-chk{width:15px;height:15px;flex-shrink:0;accent-color:var(--gdark);cursor:pointer;}
+.op-sel{flex:1;min-width:0;border:1.5px solid var(--gb);border-radius:3px;padding:4px 3px;font-family:var(--font);font-size:10px;font-weight:700;background:#fff;color:var(--grey1);cursor:pointer;}
+.comp-date-inp{width:100%;border:1.5px solid var(--gb);border-radius:3px;padding:6px 5px;font-family:var(--font);font-size:11px;text-align:center;color:var(--grey1);background:#fff;}
+.op-sel:focus,.comp-date-inp:focus{outline:2px solid var(--brand);border-color:transparent;}
 .ttl{padding:8px 5px;text-align:center;font-weight:700;font-size:13px;background:#f2f2f2;color:var(--grey1);}
 .act{padding:4px 4px;text-align:center;background:#f8f8f8;}
 tr.tot td{background:#1a1a1a!important;color:#fff!important;font-weight:700;font-size:12px;padding:7px 5px;text-align:center;border-right:1px solid #333;}
@@ -230,6 +237,8 @@ const db=firebase.database();
 const PW='shm2026';
 const DEPTS=[{key:'she',label:'Shear'},{key:'wat',label:'Waterjet'},{key:'vgr',label:'V-Groove'},{key:'brk',label:'Brake'},{key:'fab',label:'Fabrication'},{key:'pol',label:'Polishing'},{key:'fin',label:'Finishing'},{key:'core',label:'Core/Clad'},{key:'han',label:'Handling'},{key:'cra',label:'Crating'}];
 const DOLLAR_DEPTS=[{key:'out',label:'Outsource ($)'},{key:'pow',label:'Powder Coat ($)'}];
+const OUT_OPS=['Powder Coat','Tube Laser','Fabrication','Machining','Stretch Forming','Finish','Rolling'];
+function outOpsOptions(sel){return '<option value="">SELECT OP</option>'+OUT_OPS.map(o=>'<option'+(o===sel?' selected':'')+'>'+o+'</option>').join('');}
 const ST=['NOT STARTED','IN PROCESS','DONE','HOLD'];
 const SC={'NOT STARTED':'v-ns','IN PROCESS':'v-ip','DONE':'v-done','HOLD':'v-hold'};
 
@@ -479,6 +488,8 @@ function buildThead(wkNum){
   tr1.appendChild(mTh('SHIP DATE','th-info c-sd'));
   tr1.appendChild(mTh('ON SITE','th-info c-os'+(adminOn?'':' col-hidden')));
   DEPTS.forEach(d=>tr1.appendChild(mTh(d.label.toUpperCase(),'c-dp')));
+  tr1.appendChild(mTh('OUT PROD.','th-info c-op'));
+  tr1.appendChild(mTh('COMP. DATE','th-info c-cd'));
   tr1.appendChild(mTh('TTL','th-ttl c-ttl'));
   if(adminOn)tr1.appendChild(mTh('','th-act c-act'));
   thead.appendChild(tr1);
@@ -489,6 +500,8 @@ function buildThead(wkNum){
   thL.style.cssText='text-align:right;padding-right:10px;font-size:10px;color:#888';
   tr2.appendChild(thL);
   DEPTS.forEach(d=>{const th=document.createElement('th');th.className='cv';th.textContent=deptCap(d.key);tr2.appendChild(th);});
+  tr2.appendChild(document.createElement('th'));
+  tr2.appendChild(document.createElement('th'));
   const thG=document.createElement('th');thG.className='cv';thG.textContent=DEPTS.reduce((s,d)=>s+deptCap(d.key),0);tr2.appendChild(thG);
   if(adminOn)tr2.appendChild(document.createElement('th'));
   thead.appendChild(tr2);
@@ -597,6 +610,27 @@ function buildRow(row,wkNum){
     div.appendChild(hi);div.appendChild(sel);td.appendChild(div);tr.appendChild(td);
   });
 
+  // OUT PROD. (checkbox + operation dropdown) -- job-level, editable in shop view
+  (function(){
+    const td=document.createElement('td');td.className='info-cell c-op';
+    const wrap=document.createElement('div');wrap.className='op-wrap';
+    const chk=document.createElement('input');chk.type='checkbox';chk.className='op-chk';chk.checked=!!row.outProd;
+    const sel=document.createElement('select');sel.className='op-sel';
+    const ph=document.createElement('option');ph.value='';ph.textContent='SELECT OP';sel.appendChild(ph);
+    OUT_OPS.forEach(o=>{const op=document.createElement('option');op.value=o;op.textContent=o;if(o===row.outProdOp)op.selected=true;sel.appendChild(op);});
+    chk.onchange=()=>{if(rows[row._id]){rows[row._id].outProd=chk.checked;db.ref('rows/'+row._id).update({outProd:chk.checked});}};
+    sel.onchange=()=>{if(rows[row._id]){rows[row._id].outProdOp=sel.value;db.ref('rows/'+row._id).update({outProdOp:sel.value});}};
+    wrap.appendChild(chk);wrap.appendChild(sel);td.appendChild(wrap);tr.appendChild(td);
+  })();
+
+  // COMP. DATE -- free text, editable in shop view
+  (function(){
+    const td=document.createElement('td');td.className='info-cell c-cd';
+    const inp=document.createElement('input');inp.type='text';inp.className='comp-date-inp';inp.value=row.compDate||'';
+    inp.onchange=()=>{if(rows[row._id]){rows[row._id].compDate=inp.value;db.ref('rows/'+row._id).update({compDate:inp.value});}};
+    td.appendChild(inp);tr.appendChild(td);
+  })();
+
   const ttl=deptTtl(row,wkNum);
   const tdT=document.createElement('td');tdT.className='ttl c-ttl';tdT.textContent=fmt(ttl);tr.appendChild(tdT);
 
@@ -639,6 +673,8 @@ function buildTotalsRow(wkRows,wkNum){
     const t=wkRows.reduce((s,r)=>s+(r['h_'+d.key+'_'+wkNum]||0),0);
     const td=document.createElement('td');td.textContent=fmt(t);tr.appendChild(td);
   });
+  tr.appendChild(document.createElement('td'));
+  tr.appendChild(document.createElement('td'));
   const g=wkRows.reduce((s,r)=>s+deptTtl(r,wkNum),0);
   const tg=document.createElement('td');tg.textContent=fmt(g);tr.appendChild(tg);
   if(adminOn)tr.appendChild(document.createElement('td'));
@@ -683,16 +719,16 @@ function exportExcel(){
   const wb=XLSX.utils.book_new();
   const curWk=config.week||25;
   const visWeeks=showAll&&adminOn?getWeeksWithJobs():(function(){const w=[];for(let i=0;i<weekView;i++)w.push(curWk+i);return w;})();
-  const hdr=['WEEK','LEAD TIME','PROD. RELEASE','PRIORITY','JOB #','WO #','MTL STATUS','EXP. ARRIVAL','SHIP DATE','ON SITE',...DEPTS.map(d=>d.label),'TTL',...DOLLAR_DEPTS.map(d=>d.label)];
+  const hdr=['WEEK','LEAD TIME','PROD. RELEASE','PRIORITY','JOB #','WO #','MTL STATUS','EXP. ARRIVAL','SHIP DATE','ON SITE',...DEPTS.map(d=>d.label),'OUT PROD','COMP. DATE','TTL',...DOLLAR_DEPTS.map(d=>d.label)];
   const data=[hdr];
   visWeeks.forEach(wk=>{
     const wkRows=getRowsArray().filter(r=>r.weeks&&r.weeks[wk]);
     if(wkRows.length===0)return;
     wkRows.forEach(r=>{
       const shipDate=r.os?(function(){const d=new Date(r.os+'T00:00:00');d.setDate(d.getDate()-2);return d.toISOString().slice(0,10);})(  ):'';
-      data.push([wk,r.lt,r.pr,r.prio,r.job,r.wo,r.mtlStatus||'',r.expArrival||'',shipDate,r.os,...DEPTS.map(d=>r['h_'+d.key+'_'+wk]||0),deptTtl(r,wk),...DOLLAR_DEPTS.map(d=>r[d.key]||0)]);
+      data.push([wk,r.lt,r.pr,r.prio,r.job,r.wo,r.mtlStatus||'',r.expArrival||'',shipDate,r.os,...DEPTS.map(d=>r['h_'+d.key+'_'+wk]||0),(r.outProd?(r.outProdOp||'YES'):''),r.compDate||'',deptTtl(r,wk),...DOLLAR_DEPTS.map(d=>r[d.key]||0)]);
     });
-    data.push(['','','','','TOTALS','','','','','',...DEPTS.map(d=>wkRows.reduce((s,r)=>s+(r['h_'+d.key+'_'+wk]||0),0)),wkRows.reduce((s,r)=>s+deptTtl(r,wk),0),'','']);
+    data.push(['','','','','TOTALS','','','','','',...DEPTS.map(d=>wkRows.reduce((s,r)=>s+(r['h_'+d.key+'_'+wk]||0),0)),'','',wkRows.reduce((s,r)=>s+deptTtl(r,wk),0),'','']);
     data.push([]);
   });
   const ws=XLSX.utils.aoa_to_sheet(data);
@@ -765,6 +801,16 @@ function renderAddTab(){
   <div class="wk-assign">${wkChecks}</div>
   <div class="fsec">Department Hours (applied to all selected weeks)</div>
   <div class="dhg">${DEPTS.map(d=>`<div class="fr"><label>${d.label}</label><input type="number" id="nj-${d.key}" min="0" step="0.1" value="0"></div>`).join('')}</div>
+  <div class="fsec">Outside Production</div>
+  <div class="fg">
+    <div class="fr"><label>OUT PROD.</label>
+      <div style="display:flex;align-items:center;gap:8px;background:#fafafa;border:1.5px solid var(--gb);border-radius:3px;padding:6px 8px">
+        <input type="checkbox" id="nj-outprod" style="width:16px;height:16px;accent-color:var(--gdark);cursor:pointer">
+        <select id="nj-outprodop" style="flex:1;border:none;background:transparent;font-family:var(--font);font-size:13px;cursor:pointer">${outOpsOptions('')}</select>
+      </div>
+    </div>
+    <div class="fr"><label>COMP. DATE</label><input type="text" id="nj-compdate" placeholder="e.g. 06/30 or TBD"></div>
+  </div>
   <div class="fsec">Outsourced Work (Dollar Values)</div>
   <div class="dhg" style="grid-template-columns:1fr 1fr">${DOLLAR_DEPTS.map(d=>`<div class="fr"><label>${d.label}</label><input type="number" id="nj-${d.key}" min="0" step="0.01" placeholder="$0.00"></div>`).join('')}</div>
   <div class="factions"><button class="btn" style="background:#eee;color:#555" onclick="renderPanels('add')">Clear</button>
@@ -797,6 +843,9 @@ const backlog=document.getElementById('nj-backlog').checked;
     pow:parseFloat(document.getElementById('nj-pow').value)||0,
     mtlStatus:document.getElementById('nj-mtl').value||'',
     expArrival:document.getElementById('nj-ea').value||'',
+    outProd:document.getElementById('nj-outprod').checked,
+    outProdOp:document.getElementById('nj-outprodop').value||'',
+    compDate:document.getElementById('nj-compdate').value.trim(),
     backlog:backlog,bh:bh,
     weeks:{}};
   checked.forEach(w=>{row.weeks[w]=true;});
@@ -915,6 +964,16 @@ function renderEditTab(){
     const hrs=firstWk?(r['h_'+d.key+'_'+firstWk]||0):((r.bh&&r.bh[d.key])||0);
     return '<div class="fr"><label>'+d.label+'</label><input type="number" id="ej-'+d.key+'" min="0" step="0.1" value="'+hrs+'"></div>';
   }).join('')}</div>
+  <div class="fsec">Outside Production</div>
+  <div class="fg">
+    <div class="fr"><label>OUT PROD.</label>
+      <div style="display:flex;align-items:center;gap:8px;background:#fafafa;border:1.5px solid var(--gb);border-radius:3px;padding:6px 8px">
+        <input type="checkbox" id="ej-outprod" ${r.outProd?'checked':''} style="width:16px;height:16px;accent-color:var(--gdark);cursor:pointer">
+        <select id="ej-outprodop" style="flex:1;border:none;background:transparent;font-family:var(--font);font-size:13px;cursor:pointer">${outOpsOptions(r.outProdOp||'')}</select>
+      </div>
+    </div>
+    <div class="fr"><label>COMP. DATE</label><input type="text" id="ej-compdate" value="${r.compDate||''}" placeholder="e.g. 06/30 or TBD"></div>
+  </div>
   <div class="fsec">Outsourced Work (Dollar Values)</div>
   <div class="dhg" style="grid-template-columns:1fr 1fr">
     ${DOLLAR_DEPTS.map(d=>'<div class="fr"><label>'+d.label+'</label><input type="number" id="ej-'+d.key+'" min="0" step="0.01" value="'+(r[d.key]||0)+'"></div>').join('')}
@@ -955,6 +1014,9 @@ function saveEdit(){
   r.pow=parseFloat(document.getElementById('ej-pow').value)||0;
   r.mtlStatus=document.getElementById('ej-mtl').value||'';
   r.expArrival=document.getElementById('ej-ea').value||'';
+  r.outProd=document.getElementById('ej-outprod').checked;
+  r.outProdOp=document.getElementById('ej-outprodop').value||'';
+  r.compDate=document.getElementById('ej-compdate').value.trim();
 
   // update weeks
   // update weeks
@@ -1104,7 +1166,7 @@ function exportAudit(){
     });
   });
   const ws=XLSX.utils.aoa_to_sheet(data);
-  ws['!cols']=[{wch:14},{wch:12},{wch:16},{wch:14},{wch:12},{wch:14}];
+  ws['!cols']=[{wch:6},{wch:10},{wch:12},{wch:6},{wch:20},{wch:10},{wch:18},{wch:12},{wch:12},{wch:12},...DEPTS.map(()=>({wch:11})),{wch:16},{wch:12},{wch:8},...DOLLAR_DEPTS.map(()=>({wch:14}))];
   XLSX.utils.book_append_sheet(wb,ws,'Audit Log');
   XLSX.writeFile(wb,'SHM_Audit_Log_'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'.xlsx');
   showToast('Audit log exported');
