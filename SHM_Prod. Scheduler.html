@@ -17,6 +17,10 @@ header{background:var(--brand);padding:0 18px;display:flex;align-items:center;ju
 height:58px;position:sticky;top:0;z-index:200;box-shadow:0 2px 10px rgba(0,0,0,.25);border-bottom:3px solid var(--brand-dark);}
 .hdr-left{display:flex;align-items:center;gap:14px;}
 .hdr-right{display:flex;align-items:center;gap:8px;}
+.hdr-search{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.4);border-radius:4px;padding:0 9px;height:32px;}
+.hdr-search .si{font-size:12px;opacity:.85;color:#fff;}
+.hdr-search input{border:none;background:transparent;color:#fff;font-family:var(--font);font-size:12px;font-weight:600;padding:6px 2px;width:150px;outline:none;}
+.hdr-search input::placeholder{color:rgba(255,255,255,.65);font-weight:400;}
 .hdr-logo{height:36px;object-fit:contain;}
 .hdr-div{width:1.5px;height:34px;background:rgba(255,255,255,.3);}
 .hdr-title{font-size:15px;font-weight:700;letter-spacing:.8px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.2);}
@@ -179,6 +183,7 @@ tr.tot td.tot-lbl{text-align:right;padding-right:10px;font-size:10px;color:#888!
 <div><div class="hdr-title">SHOP SCHEDULER</div><div class="hdr-sub" id="hdr-sub">Loading…</div></div>
 </div>
 <div class="hdr-right">
+<div class="hdr-search"><span class="si">🔍</span><input type="search" id="hdr-search-inp" placeholder="Search job, WO, priority…" oninput="onSearch(this.value)"></div>
 <div class="sync-wrap"><div class="sync-dot on" id="sync-dot"></div><span class="sync-lbl" id="sync-lbl">Live</span></div>
 <button class="btn btn-ghost" id="btn-allweeks" style="display:none" onclick="toggleAllWeeks()">📅 All Weeks</button>
 <button class="btn btn-ghost" onclick="exportExcel()">⬇ Export</button>
@@ -238,7 +243,7 @@ function currentISOWeek(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.get
 // ══════════════════════════════════════════════════
 let rows={},config={week:currentISOWeek(),weekStart:'',days:5},deptSettings=defDS(),weekConfigs={};
 let adminOn=false,showAll=false,weekView=2,loaded=false,backlogOpen=false;
-let auditLog={},admTab='add';
+let auditLog={},admTab='add',searchQuery='';
 
 // ══════════════════════════════════════════════════
 // FIREBASE LISTENERS (real-time sync)
@@ -340,6 +345,13 @@ function renderAll(){renderMain();renderCapStrip();}
 
 function getRowsArray(){return Object.entries(rows).map(([id,r])=>({...r,_id:id}));}
 
+function rowMatchesSearch(r){
+  const q=searchQuery.trim().toLowerCase();
+  if(!q)return true;
+  return [r.job,r.wo,r.prio,r.mtlStatus].some(f=>String(f||'').toLowerCase().includes(q));
+}
+function onSearch(v){searchQuery=v;renderMain();}
+
 function getWeeksWithJobs(){
   const wkSet=new Set();
   getRowsArray().forEach(r=>{const wks=r.weeks||{};Object.keys(wks).forEach(k=>{if(wks[k])wkSet.add(parseInt(k));});});
@@ -351,8 +363,13 @@ function renderMain(){
   container.innerHTML='';
   const curWk=config.week||25;
 
+  const _sq=searchQuery.trim().toLowerCase();
   let visWeeks;
-  if(showAll&&adminOn){
+  if(_sq){
+    const wkSet=new Set();
+    getRowsArray().forEach(r=>{if(rowMatchesSearch(r)&&r.weeks){Object.keys(r.weeks).forEach(k=>{if(r.weeks[k])wkSet.add(parseInt(k));});}});
+    visWeeks=Array.from(wkSet).sort((a,b)=>a-b);
+  } else if(showAll&&adminOn){
     visWeeks=getWeeksWithJobs();
     if(visWeeks.length===0)visWeeks=[curWk];
   } else {
@@ -362,8 +379,10 @@ function renderMain(){
 
   visWeeks.forEach(wkNum=>{
     const allRows=getRowsArray();
-    const wkRows=allRows.filter(r=>r.weeks&&r.weeks[wkNum]);
+    let wkRows=allRows.filter(r=>r.weeks&&r.weeks[wkNum]);
+    if(_sq)wkRows=wkRows.filter(rowMatchesSearch);
     if(!showAll&&wkRows.length===0)return; // don't show empty weeks
+    if(_sq&&wkRows.length===0)return;
 
     const section=document.createElement('div');section.className='week-section';
     const hdr=document.createElement('div');hdr.className='week-section-hdr';
@@ -403,12 +422,16 @@ function renderMain(){
     container.appendChild(section);
   });
   renderBacklogBucket(container);
+  if(searchQuery.trim()&&container.children.length===0){
+    container.innerHTML='<div style="text-align:center;color:#888;font-size:13px;padding:40px 20px;">No jobs match "<b>'+searchQuery.trim()+'</b>". Clear the search to see the full schedule.</div>';
+  }
   updateSub();
   if(adminOn)document.getElementById('btn-allweeks').style.display='';
 }
 
 function renderBacklogBucket(container){
-  const bl=getRowsArray().filter(r=>r.backlog);
+  let bl=getRowsArray().filter(r=>r.backlog);
+  if(searchQuery.trim())bl=bl.filter(rowMatchesSearch);
   if(bl.length===0)return;
   const section=document.createElement('div');section.className='week-section';
   const hdr=document.createElement('div');hdr.className='week-section-hdr';
